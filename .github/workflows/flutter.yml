@@ -1,0 +1,49 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ] # Adjust branch names if necessary (e.g., 'main')
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4 # Updated to v4 for better security
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17' # Use Java 17 which is common for recent Flutter versions
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.x' # Use a stable 3.x version, or specify exact version like '3.24.0'
+        channel: 'stable'
+
+    - name: Get dependencies
+      run: flutter pub get
+      # Add --no-ios flag to avoid issues on Linux runners
+      # Note: This flag might not exist in all Flutter versions or might be implicitly handled
+      # The core `flutter pub get` usually doesn't do iOS setup unless explicitly asked.
+      # The error might be happening *after* pub get due to another command.
+      # Let's try the standard command first with the correct working directory assumption.
+
+    # Explicitly ensure the project structure is recognized correctly
+    # This step often implicitly happens during pub get or build, but adding for clarity if needed.
+    # - name: Ensure Project Setup (Android specific)
+    #   run: flutter create --org com.example --project-name recall_bloom . # Run only if absolutely necessary and structure is wrong
+
+    # This is the crucial step: Build the Android APK
+    # It implicitly runs necessary setup steps for Android.
+    # The error might occur *within* this command if the project structure is wrong.
+    - name: Build APK
+      run: flutter build apk --release
+
+    - name: Upload Release APK
+      uses: actions/upload-artifact@v4 # Updated to v4
+      with:
+        name: release-apk
+        path: build/app/outputs/flutter-apk/app-release.apk
