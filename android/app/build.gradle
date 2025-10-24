@@ -18,13 +18,22 @@ android {
 
     // Enable core library desugaring for Java 8+ API support
     compileOptions {
-        coreLibraryDesugaringEnabled true // Add this line
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        coreLibraryDesugaringEnabled true
+        // Use Java 11 to match Kotlin target
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
+    // Kotlin jvm target set to Java 11
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
+    }
+
+    // Ensure KotlinCompile tasks also target JVM 11 (compatibility with older Gradle setups)
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions {
+            jvmTarget = "11"
+        }
     }
 
     // Optional: Enable multidex if needed (often recommended with desugaring)
@@ -34,7 +43,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        multiDexEnabled true // Add this line
+        multiDexEnabled true
     }
 
     signingConfigs {
@@ -49,12 +58,11 @@ android {
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            // signingConfig = signingConfigs.release // This line is commented out (or removed) to bypass signing errors for this build
-            // Ensure minifyEnabled is false if you haven't configured proguard rules for desugaring
+            // signingConfig = signingConfigs.release
             minifyEnabled true
             shrinkResources true
-            // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro' // Uncomment if minifyEnabled is true
+            // Uncomment and configure proguard files if you enable minification and need custom rules:
+            // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
@@ -65,5 +73,5 @@ flutter {
 
 // Add the desugar library dependency
 dependencies {
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4' // Use a recent version
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
 }
