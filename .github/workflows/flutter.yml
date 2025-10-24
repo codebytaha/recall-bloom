@@ -3,21 +3,17 @@ name: Build Flutter Android Release
 on:
   push:
     branches: [ main ]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.24.3" # or your version
-          channel: stable
 
       - name: Set up Java 11
         uses: actions/setup-java@v4
@@ -26,19 +22,56 @@ jobs:
           java-version: "11"
           cache: gradle
 
-      - name: Clean project
+      - name: Set up Flutter (match your project's Dart SDK requirement)
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.7"   # <--- use the Flutter version that provides Dart >= 3.6.0 per your pubspec
+          channel: stable
+
+      - name: Ensure Android SDK root exists
+        run: mkdir -p $ANDROID_SDK_ROOT
+
+      - name: Install minimal Android SDKs & NDK (non-interactive)
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
         run: |
-          ./gradlew --stop || true
-          flutter clean
-          ./gradlew clean || true
+          set -e
+          # install command line tools if missing (safe to run)
+          mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools
+          curl -sS https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -o /tmp/cmdline-tools.zip
+          unzip -q /tmp/cmdline-tools.zip -d ${ANDROID_SDK_ROOT}/cmdline-tools
+          rm /tmp/cmdline-tools.zip || true
+          export PATH=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:$PATH
+          yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;27.0.12077973" || true
+          yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} --licenses || true
+
+      - name: Show versions (debug)
+        run: |
+          java -version || true
+          flutter --version || true
+
+      - name: Gradle cleanup (run from android/ if wrapper exists)
+        run: |
+          if [ -f android/gradlew ]; then
+            cd android
+            ./gradlew --stop || true
+            ./gradlew clean || true
+            cd ..
+          else
+            echo "No android/gradlew wrapper found — skipping gradle cleanup"
+          fi
 
       - name: Get Flutter dependencies
         run: flutter pub get
 
       - name: Build release APK
-        run: flutter build apk --release
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+        run: |
+          # ensure we are at repo root, then run flutter build which invokes Gradle in android/
+          flutter build apk --release
 
-      - name: Upload build artifact
+      - name: Upload APK (artifact)
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
