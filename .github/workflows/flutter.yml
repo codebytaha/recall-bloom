@@ -5,11 +5,16 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+concurrency:
+  group: android-release
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
       ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
+      ANDROID_HOME: ${{ runner.temp }}/android-sdk
 
     steps:
       - name: Checkout repository
@@ -22,44 +27,48 @@ jobs:
           java-version: "11"
           cache: gradle
 
-      - name: Set up Flutter (match your project's Dart SDK requirement)
+      - name: Set up Flutter (match your Dart SDK version)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.35.7"   # <--- use the Flutter version that provides Dart >= 3.6.0 per your pubspec
+          flutter-version: "3.35.7"   # Use the Flutter version compatible with Dart >=3.6.0
           channel: stable
 
-      - name: Ensure Android SDK root exists
-        run: mkdir -p $ANDROID_SDK_ROOT
-
-      - name: Install minimal Android SDKs & NDK (non-interactive)
-        env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+      - name: Prepare Android SDK & NDK
         run: |
-          set -e
-          # install command line tools if missing (safe to run)
-          mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
           curl -sS https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -o /tmp/cmdline-tools.zip
-          unzip -q /tmp/cmdline-tools.zip -d ${ANDROID_SDK_ROOT}/cmdline-tools
-          rm /tmp/cmdline-tools.zip || true
-          export PATH=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:$PATH
-          yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;27.0.12077973" || true
-          yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} --licenses || true
+          unzip -q /tmp/cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
+          mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+          rm /tmp/cmdline-tools.zip
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
+          yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses || true
+          yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;27.0.12077973" || true
 
-      - name: Show versions (debug)
+      - name: Verify Java & Flutter versions
         run: |
-          java -version || true
-          flutter --version || true
+          java -version
+          flutter --version
 
-      - name: Gradle cleanup (run from android/ if wrapper exists)
+      - name: Clean Gradle (if wrapper exists)
+        working-directory: ./android
         run: |
-          if [ -f android/gradlew ]; then
-            cd android
+          if [ -f gradlew ]; then
             ./gradlew --stop || true
             ./gradlew clean || true
-            cd ..
           else
-            echo "No android/gradlew wrapper found — skipping gradle cleanup"
+            echo "No gradlew in android/ — skipping cleanup"
           fi
+
+      - name: Cache pub & Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.yaml') }}-${{ hashFiles('**/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-
 
       - name: Get Flutter dependencies
         run: flutter pub get
@@ -67,9 +76,8 @@ jobs:
       - name: Build release APK
         env:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
-        run: |
-          # ensure we are at repo root, then run flutter build which invokes Gradle in android/
-          flutter build apk --release
+          JAVA_HOME: ${{ env.JAVA_HOME }}
+        run: flutter build apk --release --no-shrink
 
       - name: Upload APK (artifact)
         uses: actions/upload-artifact@v4
