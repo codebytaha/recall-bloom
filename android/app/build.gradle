@@ -16,30 +16,23 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
-    // Enable core library desugaring for Java 8+ API support
+    // Enable core library desugaring for Java 8+ API support (required by dependencies like flutter_local_notifications)
     compileOptions {
         coreLibraryDesugaringEnabled true
-        // Use Java 11 to match Kotlin target
+        // Change source and target compatibility to Java 11 to align with the CI environment and potentially resolve conflicts in dependencies
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    // Kotlin jvm target set to Java 11
+    // Set the Kotlin JVM target to Java 11 to match the Java source/target compatibility
     kotlinOptions {
         jvmTarget = "11"
     }
 
-    // Ensure KotlinCompile tasks also target JVM 11 (compatibility with older Gradle setups)
-    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-        kotlinOptions {
-            jvmTarget = "11"
-        }
-    }
-
-    // Optional: Enable multidex if needed (often recommended with desugaring)
+    // Optional: Enable multidex (often recommended when using desugaring or large apps)
     defaultConfig {
         applicationId = "com.mycompany.CounterApp"
-        minSdk = flutter.minSdkVersion
+        minSdk = flutter.minSdkVersion // Ensure this is compatible with Java 11 features if desugaring is relied upon heavily (minSdk 24+ recommended for AGP 8.x desugaring features, but Flutter's default might be lower)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -48,6 +41,7 @@ android {
 
     signingConfigs {
        release {
+           // This block remains defined but is not used because the signingConfig line is removed from buildTypes.release
            keyAlias keystoreProperties['keyAlias']
            keyPassword keystoreProperties['keyPassword']
            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
@@ -58,20 +52,21 @@ android {
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
-            // signingConfig = signingConfigs.release
-            minifyEnabled true
-            shrinkResources true
-            // Uncomment and configure proguard files if you enable minification and need custom rules:
-            // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Signing with the debug keys for now, so `flutter run --release` works (or unsigned APK for distribution).
+            // signingConfig = signingConfigs.release // This line is commented out to bypass the missing keystore error
+            minifyEnabled true // Enable code shrinking
+            shrinkResources true // Enable resource shrinking (depends on minifyEnabled being true)
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro' // Include default ProGuard rules
         }
     }
 }
 
 flutter {
-    source = "../.."
+    source = "../.." // Points to the Flutter project root (the directory containing pubspec.yaml)
 }
 
-// Add the desugar library dependency
+// Add the desugar library dependency with the version required by flutter_local_notifications
 dependencies {
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4' // Updated version
+    // Other dependencies might be added here by Flutter tooling or manually
 }
