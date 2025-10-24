@@ -18,12 +18,12 @@ android {
     // <<< IMPORTANT: enable core library desugaring and use Java 17 >>> (Matches execution JDK 17)
     compileOptions {
         coreLibraryDesugaringEnabled true // <--- Enable desugaring
-        sourceCompatibility = JavaVersion.VERSION_17 // <--- Target Java 17
-        targetCompatibility = JavaVersion.VERSION_17 // <--- Target Java 17
+        sourceCompatibility = JavaVersion.VERSION_11 // <--- Target Java 17
+        targetCompatibility = JavaVersion.VERSION_11 // <--- Target Java 17
     }
 
     kotlinOptions {
-        jvmTarget = "17" // <--- Target Java 17 for Kotlin
+        jvmTarget = "11" // <--- Target Java 17 for Kotlin
     }
 
     defaultConfig {
