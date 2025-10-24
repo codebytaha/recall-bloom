@@ -4,36 +4,65 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
-    namespace "com.example.app"  // change to your actual package
-    compileSdkVersion 34
+    namespace = "com.mycompany.CounterApp" // Change this to your desired package name, matching the original or a new one
+    compileSdk = flutter.compileSdkVersion // Use flutter variable
+    ndkVersion = flutter.ndkVersion // Use flutter variable
+
+    // <<< IMPORTANT: enable core library desugaring and use Java 17 >>> (Matches execution JDK 17)
+    compileOptions {
+        coreLibraryDesugaringEnabled true // <--- Enable desugaring
+        sourceCompatibility = JavaVersion.VERSION_17 // <--- Target Java 17
+        targetCompatibility = JavaVersion.VERSION_17 // <--- Target Java 17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17" // <--- Target Java 17 for Kotlin
+    }
 
     defaultConfig {
-        applicationId "com.example.app"  // change to your actual app id
-        minSdkVersion 23
-        targetSdkVersion 34
-        versionCode 1
-        versionName "1.0"
+        applicationId = "com.mycompany.CounterApp" // Change this to your desired app ID, matching the original or a new one
+        minSdk = flutter.minSdkVersion // Use flutter variable
+        targetSdk = flutter.targetSdkVersion // Use flutter variable
+        versionCode = flutter.versionCode // Use flutter variable
+        versionName = flutter.versionName // Use flutter variable
+        multiDexEnabled true // Enable multidex
+    }
+
+    signingConfigs {
+       release {
+           // This block remains defined but is not used because the signingConfig line is removed from buildTypes.release
+           keyAlias keystoreProperties['keyAlias']
+           keyPassword keystoreProperties['keyPassword']
+           storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+           storePassword keystoreProperties['storePassword']
+       }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
-            minifyEnabled false
-            shrinkResources false
+            // TODO: Add your own signing config for the release build.
+            // signingConfig = signingConfigs.release // <--- Keep this commented out to bypass missing keystore
+            minifyEnabled true // <--- ENABLE MINIFICATION (Shrinking)
+            shrinkResources true // <--- ENABLE RESOURCE SHRINKING (Depends on minifyEnabled)
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro' // <--- Include default ProGuard rules
         }
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = "11"
     }
 }
 
+flutter {
+    source = "../.." // Points to the Flutter project root
+}
+
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    // Add the desugar library dependency required for core library desugaring
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4' // <--- Version compatible with AGP 8.x
+    // Note: org.jetbrains.kotlin:kotlin-stdlib-jdk8 is usually added automatically by the Kotlin Android plugin.
+    // Explicitly adding it might be redundant but is generally okay if needed for compatibility.
 }
