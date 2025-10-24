@@ -17,26 +17,46 @@ allprojects {
 }
 
 rootProject.buildDir = "../build"
+
+// --- Force Kotlin to compile for JVM 11 everywhere ---
 subprojects {
     afterEvaluate { project ->
-        if (project.hasProperty("kotlin")) {
-            project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
-                kotlinOptions {
-                    jvmTarget = "1.8"
-                }
+
+        // Apply Kotlin compile settings
+        project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                jvmTarget = "11"
             }
         }
-    }
-} 
- 
-subprojects {
-    afterEvaluate { project ->
+
+        // Try to set Kotlin toolchain (safe even if unsupported)
+        try {
+            project.plugins.withId("org.jetbrains.kotlin.android") {
+                project.extensions.findByName("kotlin")?.with {
+                    project.kotlin {
+                        jvmToolchain(11)
+                    }
+                }
+            }
+            project.plugins.withId("org.jetbrains.kotlin.jvm") {
+                project.extensions.findByName("kotlin")?.with {
+                    project.kotlin {
+                        jvmToolchain(11)
+                    }
+                }
+            }
+        } catch (ignored) {
+            // no-op
+        }
+
+        // Android project settings
         if (project.plugins.hasPlugin("com.android.application") ||
                 project.plugins.hasPlugin("com.android.library")) {
             project.android {
                 compileSdkVersion 34
             }
         }
+
         if (project.hasProperty('android')) {
             project.android {
                 if (namespace == null) {
@@ -59,6 +79,7 @@ tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
 
+// Optional: load keystore if exists
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
 if (keystorePropertiesFile.exists()) {
