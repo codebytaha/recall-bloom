@@ -18,7 +18,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin' # Or 'zulu', both are good choices
-          java-version: '11' # Matches your app's compileOptions and kotlinOptions target
+          java-version: '17' # Matches your app's compileOptions and kotlinOptions target
           cache: 'gradle' # Caches Gradle dependencies for faster builds
 
       # Step 2: Set up Flutter
