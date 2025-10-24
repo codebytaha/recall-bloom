@@ -1,40 +1,45 @@
-name: Build APK
+name: Build Flutter Android Release
 
 on:
   push:
-    branches: [ main, master ] # Adjust branch names if necessary (e.g., 'main')
+    branches: [ main ]
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4 # Updated to v4 for better security
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'zulu'
-        java-version: '17' # Use Java 17 which is common for recent Flutter versions
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.3" # or your version
+          channel: stable
 
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.x' # Use a stable 3.x version, or specify exact version like '3.24.0'
-        channel: 'stable'
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: gradle
 
-    - name: Get dependencies
-      run: flutter pub get
+      - name: Clean project
+        run: |
+          ./gradlew --stop || true
+          flutter clean
+          ./gradlew clean || true
 
-    # Optional: Run tests if your project has them
-    # - name: Run tests
-    #   run: flutter test
+      - name: Get Flutter dependencies
+        run: flutter pub get
 
-    - name: Build APK
-      run: flutter build apk --release
+      - name: Build release APK
+        run: flutter build apk --release
 
-    - name: Upload Release APK
-      uses: actions/upload-artifact@v4 # Updated to v4
-      with:
-        name: release-apk
-        path: build/app/outputs/flutter-apk/app-release.apk
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
