@@ -52,7 +52,8 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             // signingConfig = signingConfigs.release // This line is commented out (or removed) to bypass signing errors for this build
             // Ensure minifyEnabled is false if you haven't configured proguard rules for desugaring
-            minifyEnabled false 
+            minifyEnabled true
+            shrinkResources true
             // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro' // Uncomment if minifyEnabled is true
         }
     }
